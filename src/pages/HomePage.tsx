@@ -42,19 +42,8 @@ export function HomePage() {
         setError(err instanceof Error ? err.message : 'Unknown error')
       }
     } else {
-      console.log('Using mock data (Supabase not configured)')
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setProducts([
-        { id: '1', product_name: 'Idli Dosa Batter', product_price: 200, product_quantity: '1 kg', category: 'Batters', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '2', product_name: 'Aapam Batter', product_price: 250, product_quantity: '1 kg', category: 'Batters', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '3', product_name: 'Adai Batter', product_price: 250, product_quantity: '1 kg', category: 'Batters', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '4', product_name: 'Ragi Batter', product_price: 200, product_quantity: '1 kg', category: 'Batters', is_in_stock: false, product_image_url: null, created_at: '' },
-        { id: '5', product_name: 'Sambar', product_price: 250, product_quantity: '1 L', category: 'Curries', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '6', product_name: 'Coconut Chutney', product_price: 100, product_quantity: '250 ml', category: 'Chutneys', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '7', product_name: 'Tomato Chutney', product_price: 100, product_quantity: '250 ml', category: 'Chutneys', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '8', product_name: 'Gun Powder', product_price: 200, product_quantity: '200 g', category: 'Powders', is_in_stock: true, product_image_url: null, created_at: '' },
-        { id: '9', product_name: 'Sambar Powder', product_price: 150, product_quantity: '100 g', category: 'Powders', is_in_stock: true, product_image_url: null, created_at: '' },
-      ])
+      console.log('Supabase NOT configured - showing mock data')
+      setError('Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.')
     }
 
     setIsLoading(false)
