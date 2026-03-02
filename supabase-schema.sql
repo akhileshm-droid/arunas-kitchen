@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS orders (
   items JSONB NOT NULL DEFAULT '[]',
   total_price INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered')),
+  payment_verified BOOLEAN DEFAULT FALSE,
+  payment_screenshot_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -31,14 +33,12 @@ CREATE POLICY "Allow authenticated updates for orders" ON orders
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_verified ON orders(payment_verified);
 
--- Insert some sample orders (optional)
--- INSERT INTO orders (customer_name, phone, address, items, total_price, status)
--- VALUES (
---   'Demo Customer',
---   '9876543210',
---   '123 Demo Street, Demo City',
---   '[{"menu_item_id": "1", "name": "Idli Dosa Batter", "price": 200, "quantity": 2}]',
---   400,
---   'pending'
--- );
+-- Storage bucket for payment screenshots
+-- Run this in Storage > Files section or via API:
+-- 1. Create a public bucket named "payment-proofs"
+-- 2. Add storage.objects policy for public access:
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('payment-proofs', 'payment-proofs', true);
+-- CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'payment-proofs');
+-- CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'payment-proofs' AND auth.role() = 'authenticated');

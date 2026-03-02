@@ -18,6 +18,8 @@ export interface Order {
   items: OrderItem[]
   total_price: number
   status: 'pending' | 'delivered'
+  payment_verified: boolean
+  payment_screenshot_url: string | null
   created_at: string
 }
 

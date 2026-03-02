@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Loader2, TrendingUp, Calendar, DollarSign } from 'lucide-react'
+import { Loader2, TrendingUp, Calendar, DollarSign, Package, Clock } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import type { DailyRevenue } from '../lib/types'
+import type { DailyRevenue, OrderItem } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
+
+interface PopularItem {
+  name: string
+  quantity: number
+}
 
 export function AdminAnalyticsPage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
   const [dailyTotal, setDailyTotal] = useState(0)
   const [monthlyVolume, setMonthlyVolume] = useState(0)
+  const [confirmedRevenue, setConfirmedRevenue] = useState(0)
+  const [pendingRevenue, setPendingRevenue] = useState(0)
+  const [popularItems, setPopularItems] = useState<PopularItem[]>([])
   const [chartData, setChartData] = useState<DailyRevenue[]>([])
 
   useEffect(() => {
@@ -20,6 +28,19 @@ export function AdminAnalyticsPage() {
     }
 
     fetchAnalytics()
+
+    if (isSupabaseConfigured()) {
+      const channel = supabase
+        .channel('analytics')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+          fetchAnalytics()
+        })
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    }
   }, [navigate])
 
   const fetchAnalytics = async () => {
@@ -50,6 +71,29 @@ export function AdminAnalyticsPage() {
         )
         setMonthlyVolume(monthOrders.length)
 
+        const confirmed = monthOrders
+          .filter(o => o.payment_verified)
+          .reduce((sum, o) => sum + (o.total_price || 0), 0)
+        const pending = monthOrders
+          .filter(o => !o.payment_verified)
+          .reduce((sum, o) => sum + (o.total_price || 0), 0)
+        setConfirmedRevenue(confirmed)
+        setPendingRevenue(pending)
+
+        const itemCounts: Record<string, number> = {}
+        monthOrders.forEach(order => {
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach((item: OrderItem) => {
+              itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity
+            })
+          }
+        })
+        const sortedItems = Object.entries(itemCounts)
+          .map(([name, quantity]) => ({ name, quantity }))
+          .sort((a, b) => b.quantity - a.quantity)
+          .slice(0, 5)
+        setPopularItems(sortedItems)
+
         const dailyRev: Record<string, number> = {}
         last7Days.forEach(day => {
           dailyRev[day] = 0
@@ -71,6 +115,15 @@ export function AdminAnalyticsPage() {
       
       setDailyTotal(1250)
       setMonthlyVolume(45)
+      setConfirmedRevenue(8500)
+      setPendingRevenue(3200)
+      setPopularItems([
+        { name: 'Idli Dosa Batter', quantity: 28 },
+        { name: 'Sambar', quantity: 22 },
+        { name: 'Aapam Batter', quantity: 18 },
+        { name: 'Coconut Chutney', quantity: 15 },
+        { name: 'Gun Powder', quantity: 12 },
+      ])
       
       setChartData(last7Days.map((day) => ({
         date: new Date(day).toLocaleDateString('en-IN', { weekday: 'short' }),
@@ -111,6 +164,24 @@ export function AdminAnalyticsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div className="premium-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-green-600" />
+            <span className="text-sm text-gray-500">Confirmed Revenue</span>
+          </div>
+          <p className="text-2xl font-bold text-green-600">₹{confirmedRevenue.toLocaleString()}</p>
+        </div>
+
+        <div className="premium-card p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="w-4 h-4 text-yellow-600" />
+            <span className="text-sm text-gray-500">Pending Revenue</span>
+          </div>
+          <p className="text-2xl font-bold text-yellow-600">₹{pendingRevenue.toLocaleString()}</p>
+        </div>
+      </div>
+
       <div className="premium-card p-4">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="w-4 h-4 text-[#4a6741]" />
@@ -147,6 +218,30 @@ export function AdminAnalyticsPage() {
               />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="premium-card p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Package className="w-4 h-4 text-[#4a6741]" />
+          <h2 className="font-semibold text-gray-800">Most Popular Items (This Month)</h2>
+        </div>
+        
+        <div className="space-y-3">
+          {popularItems.map((item, index) => (
+            <div key={item.name} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#4a6741]/10 text-[#4a6741] text-sm flex items-center justify-center font-medium">
+                  {index + 1}
+                </span>
+                <span className="text-gray-800">{item.name}</span>
+              </div>
+              <span className="text-sm font-medium text-gray-600">{item.quantity} sold</span>
+            </div>
+          ))}
+          {popularItems.length === 0 && (
+            <p className="text-gray-500 text-sm text-center py-4">No orders this month</p>
+          )}
         </div>
       </div>
     </div>

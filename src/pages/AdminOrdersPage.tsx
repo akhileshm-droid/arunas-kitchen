@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Phone, Clock, Check, Loader2, Package } from 'lucide-react'
+import { MapPin, Phone, Clock, Check, Loader2, Package, X, Eye } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { Order } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
@@ -10,6 +10,7 @@ export function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -18,6 +19,19 @@ export function AdminOrdersPage() {
     }
 
     fetchOrders()
+
+    if (isSupabaseConfigured()) {
+      const channel = supabase
+        .channel('orders')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+          fetchOrders()
+        })
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    }
   }, [navigate])
 
   const fetchOrders = async () => {
@@ -47,6 +61,22 @@ export function AdminOrdersPage() {
           ],
           total_price: 650,
           status: 'pending',
+          payment_verified: false,
+          payment_screenshot_url: null,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          customer_name: 'Test Customer',
+          phone: '9876543211',
+          address: '456 Test Avenue, Test City',
+          items: [
+            { menu_item_id: '2', name: 'Aapam Batter', price: 250, quantity: 1 },
+          ],
+          total_price: 250,
+          status: 'pending',
+          payment_verified: true,
+          payment_screenshot_url: 'https://example.com/screenshot.jpg',
           created_at: new Date().toISOString(),
         },
       ])
@@ -70,6 +100,33 @@ export function AdminOrdersPage() {
     ))
 
     setUpdatingId(null)
+  }
+
+  const verifyPayment = async (orderId: string) => {
+    setUpdatingId(orderId)
+
+    if (isSupabaseConfigured()) {
+      await supabase
+        .from('orders')
+        .update({ payment_verified: true })
+        .eq('id', orderId)
+    }
+
+    setOrders(orders.map(order =>
+      order.id === orderId ? { ...order, payment_verified: true } : order
+    ))
+
+    setUpdatingId(null)
+  }
+
+  const getPaymentBadge = (order: Order) => {
+    if (order.payment_verified) {
+      return <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Verified</span>
+    }
+    if (order.payment_screenshot_url) {
+      return <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Uploaded</span>
+    }
+    return <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">Pending</span>
   }
 
   const formatDate = (dateStr: string) => {
@@ -120,15 +177,18 @@ export function AdminOrdersPage() {
                 {formatDate(order.created_at)} at {formatTime(order.created_at)}
               </p>
             </div>
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${
-                order.status === 'delivered'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}
-            >
-              {order.status === 'delivered' ? 'Delivered' : 'Pending'}
-            </span>
+            <div className="flex gap-2">
+              {getPaymentBadge(order)}
+              <span
+                className={`text-xs px-2 py-1 rounded-full ${
+                  order.status === 'delivered'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}
+              >
+                {order.status === 'delivered' ? 'Delivered' : 'Pending'}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2 mb-3">
@@ -158,22 +218,93 @@ export function AdminOrdersPage() {
             <span className="font-bold text-lg text-[#4a6741]">₹{order.total_price}</span>
           </div>
 
-          {order.status === 'pending' && (
+          {order.payment_screenshot_url && (
             <button
-              onClick={() => markAsDelivered(order.id)}
-              disabled={updatingId === order.id}
+              onClick={() => setSelectedOrder(order)}
               className="mt-3 w-full btn-secondary flex items-center justify-center gap-2"
             >
-              {updatingId === order.id ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              Mark as Delivered
+              <Eye className="w-4 h-4" />
+              View Payment Screenshot
             </button>
           )}
+
+          <div className="mt-3 flex gap-2">
+            {!order.payment_verified && order.payment_screenshot_url && (
+              <button
+                onClick={() => verifyPayment(order.id)}
+                disabled={updatingId === order.id}
+                className="flex-1 btn-secondary flex items-center justify-center gap-2"
+              >
+                {updatingId === order.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Verify Payment
+              </button>
+            )}
+            {order.status === 'pending' && (
+              <button
+                onClick={() => markAsDelivered(order.id)}
+                disabled={updatingId === order.id}
+                className="flex-1 btn-primary flex items-center justify-center gap-2"
+              >
+                {updatingId === order.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Mark Delivered
+              </button>
+            )}
+          </div>
         </div>
       ))}
+
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="font-semibold">Payment Screenshot</h3>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Order: {selectedOrder.customer_name} - ₹{selectedOrder.total_price}
+              </p>
+              <img
+                src={selectedOrder.payment_screenshot_url || ''}
+                alt="Payment Screenshot"
+                className="w-full rounded-lg"
+              />
+              <div className="mt-4 flex gap-2">
+                {!selectedOrder.payment_verified && (
+                  <button
+                    onClick={() => {
+                      verifyPayment(selectedOrder.id)
+                      setSelectedOrder(null)
+                    }}
+                    className="flex-1 btn-primary"
+                  >
+                    Verify Payment
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="flex-1 btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
