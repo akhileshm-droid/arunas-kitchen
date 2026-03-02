@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Phone, Clock, Check, Loader2, Package, X, Eye } from 'lucide-react'
+import { MapPin, Phone, Check, Loader2, Package, X, Eye, Copy, CheckCircle } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { Order } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
@@ -11,6 +11,7 @@ export function AdminOrdersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -119,14 +120,10 @@ export function AdminOrdersPage() {
     setUpdatingId(null)
   }
 
-  const getPaymentBadge = (order: Order) => {
-    if (order.payment_verified) {
-      return <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Verified</span>
-    }
-    if (order.payment_screenshot_url) {
-      return <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">Uploaded</span>
-    }
-    return <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">Pending</span>
+  const copyAddress = async (address: string, orderId: string) => {
+    await navigator.clipboard.writeText(address)
+    setCopiedId(orderId)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   const formatDate = (dateStr: string) => {
@@ -134,7 +131,6 @@ export function AdminOrdersPage() {
     return date.toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric',
     })
   }
 
@@ -144,6 +140,23 @@ export function AdminOrdersPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const getPaymentStatus = (order: Order) => {
+    if (order.payment_verified) {
+      return { label: 'Paid', className: 'bg-green-100 text-green-700' }
+    }
+    if (order.payment_screenshot_url) {
+      return { label: 'Awaiting Verification', className: 'bg-blue-100 text-blue-700' }
+    }
+    return { label: 'Payment Pending', className: 'bg-orange-100 text-orange-700' }
+  }
+
+  const getDeliveryStatus = (order: Order) => {
+    if (order.status === 'delivered') {
+      return { label: 'Delivered', className: 'bg-green-100 text-green-700' }
+    }
+    return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' }
   }
 
   if (isLoading) {
@@ -167,99 +180,110 @@ export function AdminOrdersPage() {
     <div className="space-y-4">
       <h1 className="font-serif text-xl text-gray-800">Orders</h1>
 
-      {orders.map(order => (
-        <div key={order.id} className="premium-card p-4">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <h3 className="font-semibold text-gray-800">{order.customer_name}</h3>
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {formatDate(order.created_at)} at {formatTime(order.created_at)}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {getPaymentBadge(order)}
-              <span
-                className={`text-xs px-2 py-1 rounded-full ${
-                  order.status === 'delivered'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-yellow-100 text-yellow-700'
-                }`}
-              >
-                {order.status === 'delivered' ? 'Delivered' : 'Pending'}
+      {orders.map(order => {
+        const paymentStatus = getPaymentStatus(order)
+        const deliveryStatus = getDeliveryStatus(order)
+
+        return (
+          <div key={order.id} className="premium-card p-4">
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${paymentStatus.className}`}>
+                💰 {paymentStatus.label}
+              </span>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${deliveryStatus.className}`}>
+                🚚 {deliveryStatus.label}
               </span>
             </div>
-          </div>
 
-          <div className="space-y-2 mb-3">
-            <p className="text-sm text-gray-600 flex items-start gap-2">
-              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              {order.address}
-            </p>
-            <p className="text-sm text-gray-600 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-gray-400" />
-              {order.phone}
-            </p>
-          </div>
+            <div className="mb-3">
+              <h3 className="font-semibold text-gray-800 text-lg">{order.customer_name}</h3>
+              <p className="text-sm text-gray-500">
+                {formatDate(order.created_at)} • {formatTime(order.created_at)}
+              </p>
+            </div>
 
-          <div className="border-t border-gray-100 pt-3 mb-3">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between text-sm">
-                <span className="text-gray-600">
-                  {item.name} x{item.quantity}
-                </span>
-                <span className="text-gray-800">₹{item.price * item.quantity}</span>
+            <div className="space-y-2 mb-3">
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-600 flex-1 break-words">{order.address}</p>
+                <button
+                  onClick={() => copyAddress(order.address, order.id)}
+                  className="p-1 hover:bg-gray-100 rounded flex-shrink-0"
+                  title="Copy address"
+                >
+                  {copiedId === order.id ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
               </div>
-            ))}
-          </div>
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-gray-400" />
+                {order.phone}
+              </p>
+            </div>
 
-          <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-            <span className="font-semibold text-gray-800">Total</span>
-            <span className="font-bold text-lg text-[#4a6741]">₹{order.total_price}</span>
-          </div>
+            <div className="border-t border-gray-100 pt-3 mb-3">
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between text-sm py-1">
+                  <span className="text-gray-600">
+                    {item.name} × {item.quantity}
+                  </span>
+                  <span className="text-gray-800">₹{item.price * item.quantity}</span>
+                </div>
+              ))}
+            </div>
 
-          {order.payment_screenshot_url && (
-            <button
-              onClick={() => setSelectedOrder(order)}
-              className="mt-3 w-full btn-secondary flex items-center justify-center gap-2"
-            >
-              <Eye className="w-4 h-4" />
-              View Payment Screenshot
-            </button>
-          )}
+            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+              <span className="font-semibold text-gray-800">Total</span>
+              <span className="font-bold text-xl text-[#4a6741]">₹{order.total_price.toLocaleString()}</span>
+            </div>
 
-          <div className="mt-3 flex gap-2">
-            {!order.payment_verified && order.payment_screenshot_url && (
-              <button
-                onClick={() => verifyPayment(order.id)}
-                disabled={updatingId === order.id}
-                className="flex-1 btn-secondary flex items-center justify-center gap-2"
-              >
-                {updatingId === order.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                Verify Payment
-              </button>
-            )}
-            {order.status === 'pending' && (
-              <button
-                onClick={() => markAsDelivered(order.id)}
-                disabled={updatingId === order.id}
-                className="flex-1 btn-primary flex items-center justify-center gap-2"
-              >
-                {updatingId === order.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                Mark Delivered
-              </button>
-            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {!order.payment_verified && (
+                <button
+                  onClick={() => verifyPayment(order.id)}
+                  disabled={updatingId === order.id}
+                  className="flex-1 min-w-[140px] btn-secondary flex items-center justify-center gap-1.5 text-sm py-2"
+                >
+                  {updatingId === order.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Verify Payment
+                </button>
+              )}
+              
+              {order.payment_screenshot_url && (
+                <button
+                  onClick={() => setSelectedOrder(order)}
+                  className="flex-1 min-w-[140px] btn-secondary flex items-center justify-center gap-1.5 text-sm py-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Screenshot
+                </button>
+              )}
+              
+              {order.status === 'pending' && (
+                <button
+                  onClick={() => markAsDelivered(order.id)}
+                  disabled={updatingId === order.id}
+                  className="flex-1 min-w-[140px] btn-primary flex items-center justify-center gap-1.5 text-sm py-2"
+                >
+                  {updatingId === order.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Mark Delivered
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -275,28 +299,28 @@ export function AdminOrdersPage() {
             </div>
             <div className="p-4">
               <p className="text-sm text-gray-600 mb-2">
-                Order: {selectedOrder.customer_name} - ₹{selectedOrder.total_price}
+                {selectedOrder.customer_name} • ₹{selectedOrder.total_price}
               </p>
               <img
                 src={selectedOrder.payment_screenshot_url || ''}
                 alt="Payment Screenshot"
                 className="w-full rounded-lg"
               />
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex gap-2 flex-wrap">
                 {!selectedOrder.payment_verified && (
                   <button
                     onClick={() => {
                       verifyPayment(selectedOrder.id)
                       setSelectedOrder(null)
                     }}
-                    className="flex-1 btn-primary"
+                    className="flex-1 min-w-[140px] btn-primary"
                   >
                     Verify Payment
                   </button>
                 )}
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="flex-1 btn-secondary"
+                  className="flex-1 min-w-[140px] btn-secondary"
                 >
                   Close
                 </button>

@@ -22,7 +22,7 @@ export async function uploadPaymentScreenshot(file: File): Promise<string | null
 
   if (error) {
     console.error('Upload error:', error)
-    return null
+    throw new Error(`Upload failed: ${error.message}. Please create a 'payment-proofs' bucket in Supabase Storage.`)
   }
 
   const { data } = supabase.storage

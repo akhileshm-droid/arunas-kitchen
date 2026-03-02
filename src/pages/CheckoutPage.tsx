@@ -75,7 +75,8 @@ export function CheckoutPage() {
       clearCart()
       navigate('/success')
     } catch (err) {
-      setError('Failed to place order. Please try again.')
+      const message = err instanceof Error ? err.message : 'Failed to place order. Please try again.'
+      setError(message)
       console.error(err)
     } finally {
       setIsSubmitting(false)

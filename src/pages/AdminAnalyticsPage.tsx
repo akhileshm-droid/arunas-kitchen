@@ -16,6 +16,7 @@ export function AdminAnalyticsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [dailyTotal, setDailyTotal] = useState(0)
   const [monthlyVolume, setMonthlyVolume] = useState(0)
+  const [monthlyRevenue, setMonthlyRevenue] = useState(0)
   const [confirmedRevenue, setConfirmedRevenue] = useState(0)
   const [pendingRevenue, setPendingRevenue] = useState(0)
   const [popularItems, setPopularItems] = useState<PopularItem[]>([])
@@ -70,6 +71,9 @@ export function AdminAnalyticsPage() {
           o => new Date(o.created_at) >= startOfMonth
         )
         setMonthlyVolume(monthOrders.length)
+        
+        const mtdRevenue = monthOrders.reduce((sum, o) => sum + (o.total_price || 0), 0)
+        setMonthlyRevenue(mtdRevenue)
 
         const confirmed = monthOrders
           .filter(o => o.payment_verified)
@@ -115,6 +119,7 @@ export function AdminAnalyticsPage() {
       
       setDailyTotal(1250)
       setMonthlyVolume(45)
+      setMonthlyRevenue(11700)
       setConfirmedRevenue(8500)
       setPendingRevenue(3200)
       setPopularItems([
@@ -162,6 +167,14 @@ export function AdminAnalyticsPage() {
           </div>
           <p className="text-2xl font-bold text-[#4a6741]">{monthlyVolume} orders</p>
         </div>
+      </div>
+
+      <div className="premium-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp className="w-4 h-4 text-[#4a6741]" />
+          <span className="text-sm text-gray-500">Month Till Date Revenue</span>
+        </div>
+        <p className="text-3xl font-bold text-[#4a6741]">₹{monthlyRevenue.toLocaleString()}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
