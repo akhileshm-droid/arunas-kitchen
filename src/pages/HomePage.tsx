@@ -9,6 +9,7 @@ export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchProducts()
@@ -16,18 +17,32 @@ export function HomePage() {
 
   const fetchProducts = async () => {
     setIsLoading(true)
+    setError(null)
+    console.log('Fetching products, Supabase configured:', isSupabaseConfigured())
     
     if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('catalog')
-        .select('*')
-        .order('category', { ascending: true })
-        .order('product_name', { ascending: true })
+      console.log('Fetching from Supabase...')
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('catalog')
+          .select('*')
+          .order('category', { ascending: true })
+          .order('product_name', { ascending: true })
 
-      if (!error && data) {
-        setProducts(data)
+        console.log('Supabase response:', { data, error: fetchError })
+        
+        if (fetchError) {
+          console.error('Supabase error:', fetchError)
+          setError(fetchError.message)
+        } else if (data) {
+          setProducts(data)
+        }
+      } catch (err) {
+        console.error('Fetch error:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
       }
     } else {
+      console.log('Using mock data (Supabase not configured)')
       await new Promise(resolve => setTimeout(resolve, 500))
       setProducts([
         { id: '1', product_name: 'Idli Dosa Batter', product_price: 200, product_quantity: '1 kg', category: 'Batters', is_in_stock: true, product_image_url: null, created_at: '' },
@@ -67,6 +82,16 @@ export function HomePage() {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-[#4a6741]" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4">
+        <Package className="w-16 h-16 text-red-300 mb-4" />
+        <p className="text-red-500 text-center font-medium">Error loading products</p>
+        <p className="text-gray-500 text-center text-sm mt-2">{error}</p>
       </div>
     )
   }
