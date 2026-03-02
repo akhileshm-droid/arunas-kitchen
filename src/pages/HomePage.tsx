@@ -68,43 +68,16 @@ export function HomePage() {
     return colors[category] || 'bg-gray-100'
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-[#4a6741]" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
-        <Package className="w-16 h-16 text-red-300 mb-4" />
-        <p className="text-red-500 text-center font-medium">Error loading products</p>
-        <p className="text-gray-500 text-center text-sm mt-2">{error}</p>
-      </div>
-    )
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
-        <Package className="w-16 h-16 text-gray-300 mb-4" />
-        <p className="text-gray-500 text-center">No products available</p>
-      </div>
-    )
-  }
-
   return (
     <div className="leaf-pattern min-h-screen">
-      {/* Debug banner - remove in production */}
-      <div className={`px-4 py-2 text-center text-xs ${isSupabaseConfigured() ? 'bg-green-50' : 'bg-red-50'}`}>
-        <span className={isSupabaseConfigured() ? 'text-green-700' : 'text-red-700'}>
+      {/* Debug banner - always visible */}
+      <div className={`px-4 py-2 text-center text-sm font-medium ${isSupabaseConfigured() ? 'bg-green-100' : 'bg-red-100'}`}>
+        <span className={isSupabaseConfigured() ? 'text-green-800' : 'text-red-800'}>
           {isSupabaseConfigured() ? '✓ Supabase Connected' : '✗ Supabase NOT Connected'}
         </span>
       </div>
       
-      <div className="px-4 pt-6 pb-4">
+      <div className="px-4 pt-4 pb-4">
         <div className="bg-[#4a6741]/5 border border-[#4a6741]/20 rounded-lg p-3 mb-6">
           <p className="text-center text-sm text-[#4a6741] font-medium">
             📦 Kindly place orders 1 day in advance.
@@ -139,6 +112,25 @@ export function HomePage() {
             />
           ))}
         </div>
+
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-[#4a6741]" />
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 rounded-lg">
+            <p className="text-red-600 text-sm">Error: {error}</p>
+          </div>
+        )}
+
+        {!isLoading && products.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Package className="w-16 h-16 text-gray-300 mb-4" />
+            <p className="text-gray-500">No products available</p>
+          </div>
+        )}
       </div>
     </div>
   )
