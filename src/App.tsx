@@ -8,6 +8,7 @@ import { SuccessPage } from './pages/SuccessPage'
 import { AdminLoginPage } from './pages/AdminLoginPage'
 import { AdminLayout } from './components/AdminLayout'
 import { AdminOrdersPage } from './pages/AdminOrdersPage'
+import { AdminCatalogPage } from './pages/AdminCatalogPage'
 import { AdminAnalyticsPage } from './pages/AdminAnalyticsPage'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <Route path="/admin" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="catalog" element={<AdminCatalogPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

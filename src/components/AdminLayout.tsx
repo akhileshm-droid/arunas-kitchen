@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBag, LogOut, Leaf } from 'lucide-react'
+import { LayoutDashboard, ShoppingBag, LogOut, Leaf, Package } from 'lucide-react'
 
 export function AdminLayout() {
   const navigate = useNavigate()
@@ -12,6 +12,7 @@ export function AdminLayout() {
 
   const navItems = [
     { path: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+    { path: '/admin/catalog', label: 'Catalog', icon: Package },
     { path: '/admin/analytics', label: 'Analytics', icon: LayoutDashboard },
   ]
 

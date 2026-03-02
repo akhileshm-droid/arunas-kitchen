@@ -10,6 +10,21 @@ export interface CartItem extends MenuItem {
   quantity: number
 }
 
+export interface Product {
+  id: string
+  product_name: string
+  product_price: number
+  product_quantity: string
+  category: 'Batters' | 'Curries' | 'Chutneys' | 'Powders'
+  is_in_stock: boolean
+  product_image_url: string | null
+  created_at: string
+}
+
+export interface CartItem extends MenuItem {
+  quantity: number
+}
+
 export interface Order {
   id: string
   customer_name: string

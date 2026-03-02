@@ -35,10 +35,51 @@ CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_verified ON orders(payment_verified);
 
--- Storage bucket for payment screenshots
--- Run this in Storage > Files section or via API:
--- 1. Create a public bucket named "payment-proofs"
--- 2. Add storage.objects policy for public access:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('payment-proofs', 'payment-proofs', true);
--- CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'payment-proofs');
--- CREATE POLICY "Authenticated Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'payment-proofs' AND auth.role() = 'authenticated');
+-- Create catalog table
+CREATE TABLE IF NOT EXISTS catalog (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  product_name TEXT NOT NULL,
+  product_price INTEGER NOT NULL,
+  product_quantity TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('Batters', 'Curries', 'Chutneys', 'Powders')),
+  is_in_stock BOOLEAN DEFAULT TRUE,
+  product_image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE catalog ENABLE ROW LEVEL SECURITY;
+
+-- Public read access for catalog
+CREATE POLICY "Public read catalog" ON catalog
+  FOR SELECT USING (true);
+
+-- Allow authenticated full access for admin
+CREATE POLICY "Admin full catalog" ON catalog
+  FOR ALL USING (true);
+
+-- Create index for ordering
+CREATE INDEX idx_catalog_category_name ON catalog(category, product_name);
+
+-- Insert sample catalog items
+INSERT INTO catalog (product_name, product_price, product_quantity, category, is_in_stock) VALUES
+  ('Idli Dosa Batter', 200, '1 kg', 'Batters', true),
+  ('Aapam Batter', 250, '1 kg', 'Batters', true),
+  ('Adai Batter', 250, '1 kg', 'Batters', true),
+  ('Ragi Batter', 200, '1 kg', 'Batters', true),
+  ('Sambar', 250, '1 L', 'Curries', true),
+  ('Coconut Chutney', 100, '250 ml', 'Chutneys', true),
+  ('Tomato Chutney', 100, '250 ml', 'Chutneys', true),
+  ('Gun Powder', 200, '200 g', 'Powders', true),
+  ('Sambar Powder', 150, '100 g', 'Powders', true);
+
+-- Storage buckets
+-- Run in Storage > Files section:
+-- 1. Create bucket "payment-proofs" (public)
+-- 2. Create bucket "uploads" (public)
+
+-- SQL for storage:
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('uploads', 'uploads', true);
+-- CREATE POLICY "Public Access uploads" ON storage.objects FOR SELECT USING (bucket_id = 'uploads');
+-- CREATE POLICY "Admin Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'uploads');
+-- CREATE POLICY "Admin Delete" ON storage.objects FOR DELETE USING (bucket_id = 'uploads');
