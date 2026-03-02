@@ -214,71 +214,55 @@ export function AdminCatalogPage() {
           <p className="text-gray-500">No products yet</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Product</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Category</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-500">Price</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-gray-500">Stock</th>
-                  <th className="text-right px-4 py-3 text-sm font-medium text-gray-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {products.map(product => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {product.product_image_url ? (
-                          <img src={product.product_image_url} alt={product.product_name} className="w-10 h-10 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-[#4a6741]/10 flex items-center justify-center text-[#4a6741] font-medium text-sm">
-                            {product.product_name.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-gray-800">{product.product_name}</p>
-                          <p className="text-sm text-gray-500">{product.product_quantity}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{product.category}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-800">₹{product.product_price}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleStock(product.id, product.is_in_stock)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          product.is_in_stock ? 'bg-green-500' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          product.is_in_stock ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(product)}
-                          className="p-2 text-gray-500 hover:text-[#4a6741] hover:bg-gray-100 rounded-lg"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(product.id)}
-                          className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {products.map(product => (
+            <div key={product.id} className="premium-card p-4 flex gap-4">
+              <div className="flex-shrink-0">
+                {product.product_image_url ? (
+                  <img src={product.product_image_url} alt={product.product_name} className="w-16 h-16 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-[#4a6741]/10 flex items-center justify-center text-[#4a6741] font-medium text-lg">
+                    {product.product_name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0">
+                    <h3 className="font-medium text-gray-800 truncate">{product.product_name}</h3>
+                    <p className="text-sm text-gray-500">{product.product_quantity}</p>
+                    <p className="text-sm font-medium text-gray-800 mt-1">₹{product.product_price}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleStock(product.id, product.is_in_stock)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                      product.is_in_stock ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      product.is_in_stock ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => openEditModal(product)}
+                    className="flex-1 py-2 text-sm text-gray-600 hover:text-[#4a6741] hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(product.id)}
+                    className="flex-1 py-2 text-sm text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

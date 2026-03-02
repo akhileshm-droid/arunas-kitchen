@@ -50,13 +50,15 @@ CREATE TABLE IF NOT EXISTS catalog (
 -- Enable RLS
 ALTER TABLE catalog ENABLE ROW LEVEL SECURITY;
 
--- Public read access for catalog
+-- Allow public read access for catalog (anonymous users)
+DROP POLICY IF EXISTS "Public read catalog" ON catalog;
 CREATE POLICY "Public read catalog" ON catalog
   FOR SELECT USING (true);
 
--- Allow authenticated full access for admin
+-- Allow all authenticated operations for admin
+DROP POLICY IF EXISTS "Admin full catalog" ON catalog;
 CREATE POLICY "Admin full catalog" ON catalog
-  FOR ALL USING (true);
+  FOR ALL USING (true) WITH CHECK (true);
 
 -- Create index for ordering
 CREATE INDEX idx_catalog_category_name ON catalog(category, product_name);

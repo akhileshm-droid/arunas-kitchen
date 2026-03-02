@@ -19,10 +19,8 @@ export function HomePage() {
   const fetchProducts = async () => {
     setIsLoading(true)
     setError(null)
-    console.log('Fetching products, Supabase configured:', isSupabaseConfigured())
     
     if (isSupabaseConfigured()) {
-      console.log('Fetching from Supabase...')
       try {
         const { data, error: fetchError } = await supabase
           .from('catalog')
@@ -30,21 +28,14 @@ export function HomePage() {
           .order('category', { ascending: true })
           .order('product_name', { ascending: true })
 
-        console.log('Supabase response:', { data, error: fetchError })
-        
         if (fetchError) {
-          console.error('Supabase error:', fetchError)
           setError(fetchError.message)
         } else if (data) {
           setProducts(data)
         }
       } catch (err) {
-        console.error('Fetch error:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        setError(err instanceof Error ? err.message : 'Failed to load products')
       }
-    } else {
-      console.log('Supabase NOT configured - showing mock data')
-      setError('Supabase not configured. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.')
     }
 
     setIsLoading(false)
@@ -70,14 +61,7 @@ export function HomePage() {
 
   return (
     <div className="leaf-pattern min-h-screen">
-      {/* Debug banner - always visible */}
-      <div className={`px-4 py-2 text-center text-sm font-medium ${isSupabaseConfigured() ? 'bg-green-100' : 'bg-red-100'}`}>
-        <span className={isSupabaseConfigured() ? 'text-green-800' : 'text-red-800'}>
-          {isSupabaseConfigured() ? '✓ Supabase Connected' : '✗ Supabase NOT Connected'}
-        </span>
-      </div>
-      
-      <div className="px-4 pt-4 pb-4">
+      <div className="px-4 pt-6 pb-4">
         <div className="bg-[#4a6741]/5 border border-[#4a6741]/20 rounded-lg p-3 mb-6">
           <p className="text-center text-sm text-[#4a6741] font-medium">
             📦 Kindly place orders 1 day in advance.
@@ -149,6 +133,7 @@ function ProductCard({ product, getInitials, getPlaceholderColor }: ProductCardP
   const { items, addItem, updateQuantity, removeItem } = useCart()
   const cartItem = items.find(i => i.id === product.id)
   const quantity = cartItem?.quantity || 0
+  const [imageLoading, setImageLoading] = useState(true)
 
   if (!product.is_in_stock) {
     return (
@@ -159,6 +144,8 @@ function ProductCard({ product, getInitials, getPlaceholderColor }: ProductCardP
               src={product.product_image_url}
               alt={product.product_name}
               className="w-full h-full object-cover"
+              loading="lazy"
+              onLoad={() => setImageLoading(false)}
             />
           ) : (
             <div className={`w-full h-full flex items-center justify-center ${getPlaceholderColor(product.category)}`}>
@@ -184,12 +171,20 @@ function ProductCard({ product, getInitials, getPlaceholderColor }: ProductCardP
 
   return (
     <div className="premium-card overflow-hidden">
-      <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+      <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden relative">
+        {imageLoading && product.product_image_url && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        )}
         {product.product_image_url ? (
           <img
             src={product.product_image_url}
             alt={product.product_name}
             className="w-full h-full object-cover"
+            loading="lazy"
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
           />
         ) : (
           <div className={`w-full h-full flex items-center justify-center ${getPlaceholderColor(product.category)}`}>
