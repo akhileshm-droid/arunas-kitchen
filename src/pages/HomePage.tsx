@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Package } from 'lucide-react'
-import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { isSupabaseConfigured } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Product } from '../lib/types'
 
 const CATEGORIES = ['All', 'Batters', 'Curries', 'Chutneys', 'Powders'] as const
@@ -96,6 +97,13 @@ export function HomePage() {
 
   return (
     <div className="leaf-pattern min-h-screen">
+      {/* Debug banner - remove in production */}
+      <div className={`px-4 py-2 text-center text-xs ${isSupabaseConfigured() ? 'bg-green-50' : 'bg-red-50'}`}>
+        <span className={isSupabaseConfigured() ? 'text-green-700' : 'text-red-700'}>
+          {isSupabaseConfigured() ? '✓ Supabase Connected' : '✗ Supabase NOT Connected'}
+        </span>
+      </div>
+      
       <div className="px-4 pt-6 pb-4">
         <div className="bg-[#4a6741]/5 border border-[#4a6741]/20 rounded-lg p-3 mb-6">
           <p className="text-center text-sm text-[#4a6741] font-medium">
