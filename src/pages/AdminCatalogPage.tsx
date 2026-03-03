@@ -53,7 +53,12 @@ export function AdminCatalogPage() {
         .order('category', { ascending: true })
         .order('product_name', { ascending: true })
 
-      if (!error && data) {
+      if (error) {
+        console.error('Fetch error:', error)
+        alert(`Failed to fetch products: ${error.message}`)
+      }
+      
+      if (data) {
         setProducts(data)
       }
     } else {
@@ -129,25 +134,41 @@ export function AdminCatalogPage() {
         product_quantity: formData.product_quantity,
         category: formData.category,
         product_image_url: imageUrl,
+        is_in_stock: true,
       }
 
       if (editingProduct) {
         if (isSupabaseConfigured()) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('catalog')
             .update(productData)
             .eq('id', editingProduct.id)
+          
+          if (updateError) {
+            console.error('Update error:', updateError)
+            alert(`Failed to update: ${updateError.message}`)
+            setIsSaving(false)
+            return
+          }
         }
         setProducts(products.map(p => 
           p.id === editingProduct.id ? { ...p, ...productData } : p
         ))
       } else {
         if (isSupabaseConfigured()) {
-          const { data } = await supabase
+          const { data, error: insertError } = await supabase
             .from('catalog')
             .insert(productData)
             .select()
             .single()
+          
+          if (insertError) {
+            console.error('Insert error:', insertError)
+            alert(`Failed to add product: ${insertError.message}`)
+            setIsSaving(false)
+            return
+          }
+          
           if (data) {
             setProducts([...products, data].sort((a, b) => 
               a.category.localeCompare(b.category) || a.product_name.localeCompare(b.product_name)
@@ -166,6 +187,7 @@ export function AdminCatalogPage() {
       setImageFile(null)
     } catch (error) {
       console.error('Error saving product:', error)
+      alert('Failed to save product. Check console for details.')
     } finally {
       setIsSaving(false)
     }
@@ -175,16 +197,27 @@ export function AdminCatalogPage() {
     const product = products.find(p => p.id === productId)
     if (!product) return
 
-    if (product.product_image_url && isSupabaseConfigured()) {
-      await deleteProductImage(product.product_image_url)
-    }
+    try {
+      if (product.product_image_url && isSupabaseConfigured()) {
+        await deleteProductImage(product.product_image_url)
+      }
 
-    if (isSupabaseConfigured()) {
-      await supabase.from('catalog').delete().eq('id', productId)
-    }
+      if (isSupabaseConfigured()) {
+        const { error: deleteError } = await supabase.from('catalog').delete().eq('id', productId)
+        
+        if (deleteError) {
+          console.error('Delete error:', deleteError)
+          alert(`Failed to delete: ${deleteError.message}`)
+          return
+        }
+      }
 
-    setProducts(products.filter(p => p.id !== productId))
-    setDeleteConfirm(null)
+      setProducts(products.filter(p => p.id !== productId))
+      setDeleteConfirm(null)
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete product')
+    }
   }
 
   if (isLoading) {
@@ -244,19 +277,19 @@ export function AdminCatalogPage() {
                     }`} />
                   </button>
                 </div>
-                <div className="flex gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3">
                   <button
                     onClick={() => openEditModal(product)}
-                    className="flex-1 py-2 text-sm text-gray-600 hover:text-[#4a6741] hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1"
+                    className="px-3 py-1.5 text-xs text-gray-600 hover:text-[#4a6741] hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-3 h-3" />
                     Edit
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(product.id)}
-                    className="flex-1 py-2 text-sm text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1"
+                    className="px-3 py-1.5 text-xs text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center justify-center gap-1"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                     Delete
                   </button>
                 </div>

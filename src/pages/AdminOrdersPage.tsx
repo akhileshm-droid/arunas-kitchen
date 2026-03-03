@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Check, Loader2, Package, X, Eye, Copy, CheckCircle } from 'lucide-react'
+import { MapPin, Check, Loader2, Package, X, Eye, Copy, CheckCircle, Trash2 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { Order } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
@@ -17,6 +17,7 @@ export function AdminOrdersPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [dayFilter, setDayFilter] = useState<DayFilter>('today')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -95,6 +96,20 @@ export function AdminOrdersPage() {
     ))
 
     setUpdatingId(null)
+  }
+
+  const deleteOrder = async (orderId: string) => {
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('orders').delete().eq('id', orderId)
+      if (error) {
+        console.error('Delete error:', error)
+        alert('Failed to delete order')
+        return
+      }
+    }
+
+    setOrders(orders.filter(order => order.id !== orderId))
+    setDeleteConfirm(null)
   }
 
   const copyAddress = async (address: string, orderId: string) => {
@@ -336,6 +351,14 @@ export function AdminOrdersPage() {
                     Delivered
                   </button>
                 )}
+                
+                <button 
+                  onClick={() => setDeleteConfirm(order.id)} 
+                  className="text-xs py-1.5 px-2 text-gray-400 hover:text-red-500 flex items-center justify-center gap-1"
+                  title="Delete order"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
             </div>
           )
@@ -362,6 +385,29 @@ export function AdminOrdersPage() {
                 )}
                 <button onClick={() => setSelectedOrder(null)} className="flex-1 text-xs py-2 bg-gray-100 text-gray-600 rounded">Close</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-sm w-full p-6">
+            <h3 className="font-semibold text-lg mb-2">Delete Order?</h3>
+            <p className="text-gray-600 mb-4">This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteOrder(deleteConfirm)}
+                className="flex-1 bg-red-500 text-white px-6 py-3 rounded-md font-medium hover:bg-red-600"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
