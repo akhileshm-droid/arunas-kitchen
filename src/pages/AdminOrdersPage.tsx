@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Phone, Check, Loader2, Package, X, Eye, Copy, CheckCircle, Clock, Calendar } from 'lucide-react'
+import { MapPin, Check, Loader2, Package, X, Eye, Copy, CheckCircle } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { Order } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
 
-type FilterType = 'today' | 'tomorrow' | 'all'
+type DayFilter = 'today' | 'tomorrow' | 'all'
+type StatusFilter = 'all' | 'payment_pending' | 'delivery_pending'
 
 export function AdminOrdersPage() {
   const navigate = useNavigate()
@@ -14,7 +15,8 @@ export function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<FilterType>('today')
+  const [dayFilter, setDayFilter] = useState<DayFilter>('tomorrow')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -122,25 +124,29 @@ export function AdminOrdersPage() {
     return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' }
   }
 
-  const getOrderDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    date.setHours(0, 0, 0, 0)
-    return date
+  // Orders placed today are for TOMORROW's delivery
+  const getDeliveryDate = (createdAt: string) => {
+    const orderDate = new Date(createdAt)
+    const deliveryDate = new Date(orderDate)
+    deliveryDate.setDate(deliveryDate.getDate() + 1)
+    return deliveryDate
   }
 
-  const isToday = (dateStr: string) => {
-    const orderDate = getOrderDate(dateStr)
+  const isDeliveryToday = (createdAt: string) => {
+    const deliveryDate = getDeliveryDate(createdAt)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return orderDate.getTime() === today.getTime()
+    deliveryDate.setHours(0, 0, 0, 0)
+    return deliveryDate.getTime() === today.getTime()
   }
 
-  const isTomorrow = (dateStr: string) => {
-    const orderDate = getOrderDate(dateStr)
+  const isDeliveryTomorrow = (createdAt: string) => {
+    const deliveryDate = getDeliveryDate(createdAt)
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     tomorrow.setHours(0, 0, 0, 0)
-    return orderDate.getTime() === tomorrow.getTime()
+    deliveryDate.setHours(0, 0, 0, 0)
+    return deliveryDate.getTime() === tomorrow.getTime()
   }
 
   if (isLoading) {
@@ -151,172 +157,183 @@ export function AdminOrdersPage() {
     )
   }
 
-  const todayOrders = orders.filter(o => isToday(o.created_at) && o.status !== 'delivered')
-  const tomorrowOrders = orders.filter(o => isTomorrow(o.created_at) && o.status !== 'delivered')
-  const allPendingOrders = orders.filter(o => o.status !== 'delivered')
+  // Count orders by delivery date (not order date)
+  const todayDeliveries = orders.filter(o => isDeliveryToday(o.created_at) && o.status !== 'delivered')
+  const tomorrowDeliveries = orders.filter(o => isDeliveryTomorrow(o.created_at) && o.status !== 'delivered')
+  const allPending = orders.filter(o => o.status !== 'delivered')
 
   const filteredOrders = orders.filter(order => {
-    if (filter === 'today') return isToday(order.created_at)
-    if (filter === 'tomorrow') return isTomorrow(order.created_at)
+    // Day filter (based on delivery date, not order date)
+    if (dayFilter === 'today') return isDeliveryToday(order.created_at)
+    if (dayFilter === 'tomorrow') return isDeliveryTomorrow(order.created_at)
+    return true
+  }).filter(order => {
+    // Status filter
+    if (statusFilter === 'payment_pending') return !order.payment_verified
+    if (statusFilter === 'delivery_pending') return order.status !== 'delivered'
     return true
   })
 
-  const getFilterCounts = () => {
-    return {
-      today: todayOrders.length,
-      tomorrow: tomorrowOrders.length,
-      all: allPendingOrders.length
-    }
+  const counts = {
+    today: todayDeliveries.length,
+    tomorrow: tomorrowDeliveries.length,
+    all: allPending.length,
+    paymentPending: allPending.filter(o => !o.payment_verified).length,
+    deliveryPending: allPending.filter(o => o.status !== 'delivered').length
   }
 
-  const counts = getFilterCounts()
-  const todayDate = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
-  const tomorrowDate = new Date(Date.now() + 86400000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <h1 className="font-serif text-xl text-gray-800">Orders</h1>
 
-      <div className="bg-gradient-to-r from-[#4a6741] to-[#6b7d57] rounded-xl p-4 text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <Calendar className="w-5 h-5" />
-          <span className="font-medium">Today's Deliveries</span>
+      <div className="flex gap-2">
+        <div className="flex-1 bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+          <p className="text-base font-bold text-green-700">{counts.today}</p>
+          <p className="text-xs text-green-600">Today</p>
         </div>
-        <p className="text-3xl font-bold">{counts.today}</p>
-        <p className="text-sm text-white/80 mt-1">{todayDate}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4 text-orange-600" />
-            <span className="text-sm text-orange-700">Tomorrow</span>
-          </div>
-          <p className="text-2xl font-bold text-orange-600">{counts.tomorrow}</p>
-          <p className="text-xs text-orange-600/70">{tomorrowDate}</p>
+        <div className="flex-1 bg-orange-50 border border-orange-200 rounded-lg p-2 text-center">
+          <p className="text-base font-bold text-orange-700">{counts.tomorrow}</p>
+          <p className="text-xs text-orange-600">Tomorrow</p>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Package className="w-4 h-4 text-gray-600" />
-            <span className="text-sm text-gray-600">All Pending</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-600">{counts.all}</p>
-          <p className="text-xs text-gray-500">Not delivered</p>
+        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-center">
+          <p className="text-base font-bold text-gray-600">{counts.all}</p>
+          <p className="text-xs text-gray-500">Pending</p>
         </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
         <button
-          onClick={() => setFilter('today')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'today' ? 'bg-[#4a6741] text-white' : 'bg-gray-100 text-gray-600'
+          onClick={() => setDayFilter('today')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            dayFilter === 'today' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'
           }`}
         >
           📦 Today ({counts.today})
         </button>
         <button
-          onClick={() => setFilter('tomorrow')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'tomorrow' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'
+          onClick={() => setDayFilter('tomorrow')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            dayFilter === 'tomorrow' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'
           }`}
         >
           📅 Tomorrow ({counts.tomorrow})
         </button>
         <button
-          onClick={() => setFilter('all')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600'
+          onClick={() => setDayFilter('all')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            dayFilter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600'
           }`}
         >
-          All Orders
+          All
+        </button>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            statusFilter === 'all' ? 'bg-[#4a6741] text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          All Status
+        </button>
+        <button
+          onClick={() => setStatusFilter('payment_pending')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            statusFilter === 'payment_pending' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'
+          }`}
+        >
+          💰 Payment Pending ({counts.paymentPending})
+        </button>
+        <button
+          onClick={() => setStatusFilter('delivery_pending')}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
+            statusFilter === 'delivery_pending' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-600'
+          }`}
+        >
+          🚚 Delivery Pending ({counts.deliveryPending})
         </button>
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="text-center py-12">
-          <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No orders in this category</p>
+        <div className="text-center py-8">
+          <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">No orders in this category</p>
         </div>
       ) : (
         filteredOrders.map(order => {
           const paymentStatus = getPaymentStatus(order)
           const deliveryStatus = getDeliveryStatus(order)
-          const isTodayOrder = isToday(order.created_at)
-          const isTomorrowOrder = isTomorrow(order.created_at)
+          const isTodayDelivery = isDeliveryToday(order.created_at)
+          const isTomorrowDelivery = isDeliveryTomorrow(order.created_at)
 
           return (
-            <div key={order.id} className="premium-card p-4">
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${paymentStatus.className}`}>
-                  💰 {paymentStatus.label}
+            <div key={order.id} className="premium-card p-3">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${paymentStatus.className}`}>
+                  {paymentStatus.label}
                 </span>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${deliveryStatus.className}`}>
-                  🚚 {deliveryStatus.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${deliveryStatus.className}`}>
+                  {deliveryStatus.label}
                 </span>
-                {isTodayOrder && (
-                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-[#4a6741]/10 text-[#4a6741]">
+                {isTodayDelivery && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
                     Today
                   </span>
                 )}
-                {isTomorrowOrder && (
-                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-orange-100 text-orange-700">
+                {isTomorrowDelivery && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
                     Tomorrow
                   </span>
                 )}
               </div>
 
-              <div className="mb-3">
-                <h3 className="font-semibold text-gray-800 text-lg">{order.customer_name}</h3>
-                <p className="text-sm text-gray-500">{formatDate(order.created_at)} • {formatTime(order.created_at)}</p>
+              <div className="mb-2">
+                <h3 className="font-semibold text-gray-800">{order.customer_name}</h3>
+                <p className="text-xs text-gray-500">{formatDate(order.created_at)} • {formatTime(order.created_at)}</p>
               </div>
 
-              <div className="space-y-2 mb-3">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-gray-600 flex-1 break-words">{order.address}</p>
-                  <button onClick={() => copyAddress(order.address, order.id)} className="p-1 hover:bg-gray-100 rounded flex-shrink-0">
-                    {copiedId === order.id ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-400" />}
-                  </button>
-                </div>
-                <p className="text-sm text-gray-600 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  {order.phone}
-                </p>
+              <div className="flex items-start gap-2 mb-2">
+                <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-gray-600 flex-1 break-words">{order.address}</p>
+                <button onClick={() => copyAddress(order.address, order.id)} className="p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+                  {copiedId === order.id ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+                </button>
               </div>
 
-              <div className="border-t border-gray-100 pt-3 mb-3">
+              <div className="border-t border-gray-100 pt-2 mb-2">
                 {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm py-1">
-                    <span className="text-gray-600">{item.name} × {item.quantity}</span>
-                    <span className="text-gray-800">₹{item.price * item.quantity}</span>
+                  <div key={idx} className="flex justify-between text-xs">
+                    <span className="text-gray-500">{item.name} × {item.quantity}</span>
+                    <span className="text-gray-700">₹{item.price * item.quantity}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                <span className="font-semibold text-gray-800">Total</span>
-                <span className="font-bold text-xl text-[#4a6741]">₹{order.total_price.toLocaleString()}</span>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                <span className="text-sm font-semibold text-gray-800">Total</span>
+                <span className="font-bold text-[#4a6741]">₹{order.total_price}</span>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {!order.payment_verified && (
-                  <button onClick={() => verifyPayment(order.id)} disabled={updatingId === order.id} className="flex-1 min-w-[140px] btn-secondary flex items-center justify-center gap-1.5 text-sm py-2">
-                    {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Verify Payment
+                  <button onClick={() => verifyPayment(order.id)} disabled={updatingId === order.id} className="flex-1 min-w-[100px] text-xs py-1.5 px-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 flex items-center justify-center gap-1">
+                    {updatingId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    Verify Pay
                   </button>
                 )}
                 
                 {order.payment_screenshot_url && (
-                  <button onClick={() => setSelectedOrder(order)} className="flex-1 min-w-[140px] btn-secondary flex items-center justify-center gap-1.5 text-sm py-2">
-                    <Eye className="w-4 h-4" />
-                    View Screenshot
+                  <button onClick={() => setSelectedOrder(order)} className="flex-1 min-w-[100px] text-xs py-1.5 px-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex items-center justify-center gap-1">
+                    <Eye className="w-3 h-3" />
+                    Screenshot
                   </button>
                 )}
                 
                 {order.status === 'pending' && (
-                  <button onClick={() => markAsDelivered(order.id)} disabled={updatingId === order.id} className="flex-1 min-w-[140px] btn-primary flex items-center justify-center gap-1.5 text-sm py-2">
-                    {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Mark Delivered
+                  <button onClick={() => markAsDelivered(order.id)} disabled={updatingId === order.id} className="flex-1 min-w-[100px] text-xs py-1.5 px-2 bg-[#4a6741] text-white rounded hover:bg-[#6b7d57] flex items-center justify-center gap-1">
+                    {updatingId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    Delivered
                   </button>
                 )}
               </div>
@@ -327,23 +344,23 @@ export function AdminOrdersPage() {
 
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-semibold">Payment Screenshot</h3>
+          <div className="bg-white rounded-lg max-w-sm w-full max-h-[80vh] overflow-auto">
+            <div className="flex justify-between items-center p-3 border-b">
+              <h3 className="font-semibold text-sm">Payment Screenshot</h3>
               <button onClick={() => setSelectedOrder(null)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-4">
-              <p className="text-sm text-gray-600 mb-2">{selectedOrder.customer_name} • ₹{selectedOrder.total_price}</p>
-              <img src={selectedOrder.payment_screenshot_url || ''} alt="Payment Screenshot" className="w-full rounded-lg" />
-              <div className="mt-4 flex gap-2 flex-wrap">
+            <div className="p-3">
+              <p className="text-xs text-gray-600 mb-2">{selectedOrder.customer_name} • ₹{selectedOrder.total_price}</p>
+              <img src={selectedOrder.payment_screenshot_url || ''} alt="Payment Screenshot" className="w-full rounded" />
+              <div className="mt-3 flex gap-2">
                 {!selectedOrder.payment_verified && (
-                  <button onClick={() => { verifyPayment(selectedOrder.id); setSelectedOrder(null) }} className="flex-1 min-w-[140px] btn-primary">
+                  <button onClick={() => { verifyPayment(selectedOrder.id); setSelectedOrder(null) }} className="flex-1 text-xs py-2 bg-[#4a6741] text-white rounded">
                     Verify Payment
                   </button>
                 )}
-                <button onClick={() => setSelectedOrder(null)} className="flex-1 min-w-[140px] btn-secondary">Close</button>
+                <button onClick={() => setSelectedOrder(null)} className="flex-1 text-xs py-2 bg-gray-100 text-gray-600 rounded">Close</button>
               </div>
             </div>
           </div>
