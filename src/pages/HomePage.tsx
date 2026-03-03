@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Loader2, Package } from 'lucide-react'
+import { Loader2, Package, Search } from 'lucide-react'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
 import type { Product } from '../lib/types'
@@ -10,6 +10,7 @@ export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -41,9 +42,12 @@ export function HomePage() {
     setIsLoading(false)
   }
 
-  const filteredProducts = selectedCategory === 'All'
-    ? products
-    : products.filter(p => p.category === selectedCategory)
+  const filteredProducts = products
+    .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
+    .filter(p => {
+      if (!searchQuery.trim()) return true
+      return p.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+    })
 
   const getInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -85,6 +89,31 @@ export function HomePage() {
             </button>
           ))}
         </div>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#4a6741]"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {searchQuery && (
+          <p className="text-sm text-gray-500 mb-4">
+            {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''} for "{searchQuery}"
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           {filteredProducts.map(product => (
