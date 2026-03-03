@@ -18,6 +18,7 @@ export function AdminOrdersPage() {
   const [dayFilter, setDayFilter] = useState<DayFilter>('today')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -351,7 +352,7 @@ export function AdminOrdersPage() {
                 )}
                 
                 {order.payment_screenshot_url && (
-                  <button onClick={() => setSelectedOrder(order)} className="flex-1 min-w-[100px] text-xs py-1.5 px-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex items-center justify-center gap-1">
+                  <button onClick={() => { setSelectedOrder(order); setImageLoading(true) }} className="flex-1 min-w-[100px] text-xs py-1.5 px-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 flex items-center justify-center gap-1">
                     <Eye className="w-3 h-3" />
                     Screenshot
                   </button>
@@ -378,17 +379,27 @@ export function AdminOrdersPage() {
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-sm w-full max-h-[80vh] overflow-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setSelectedOrder(null); setImageLoading(false) }}>
+          <div className="bg-white rounded-lg max-w-sm w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-3 border-b">
               <h3 className="font-semibold text-sm">Payment Screenshot</h3>
-              <button onClick={() => setSelectedOrder(null)} className="p-1 hover:bg-gray-100 rounded">
+              <button onClick={() => { setSelectedOrder(null); setImageLoading(false) }} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-3">
               <p className="text-xs text-gray-600 mb-2">{selectedOrder.customer_name} • ₹{selectedOrder.total_price}</p>
-              <img src={selectedOrder.payment_screenshot_url || ''} alt="Payment Screenshot" className="w-full rounded" />
+              {imageLoading && (
+                <div className="w-full h-48 flex items-center justify-center bg-gray-100 rounded">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#4a6741]" />
+                </div>
+              )}
+              <img 
+                src={selectedOrder.payment_screenshot_url || ''} 
+                alt="Payment Screenshot" 
+                className={`w-full rounded ${imageLoading ? 'hidden' : ''}`}
+                onLoad={() => setImageLoading(false)}
+              />
               <div className="mt-3 flex gap-2">
                 {!selectedOrder.payment_verified && (
                   <button onClick={() => { verifyPayment(selectedOrder.id); setSelectedOrder(null) }} className="flex-1 text-xs py-2 bg-[#4a6741] text-white rounded">
