@@ -23,7 +23,8 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/admin" element={<AdminLoginPage />} />
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route path="/admin/" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/orders" replace />} />
             <Route path="orders" element={<AdminOrdersPage />} />
             <Route path="catalog" element={<AdminCatalogPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
