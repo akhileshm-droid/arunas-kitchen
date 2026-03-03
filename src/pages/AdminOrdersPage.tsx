@@ -15,7 +15,7 @@ export function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [dayFilter, setDayFilter] = useState<DayFilter>('tomorrow')
+  const [dayFilter, setDayFilter] = useState<DayFilter>('today')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {

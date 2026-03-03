@@ -8,6 +8,7 @@ export function CheckoutPage() {
   const navigate = useNavigate()
   const { items, total, clearCart } = useCart()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [orderSuccess, setOrderSuccess] = useState(false)
   const [error, setError] = useState('')
   const [paymentMade, setPaymentMade] = useState(false)
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
@@ -20,7 +21,7 @@ export function CheckoutPage() {
     address: '',
   })
 
-  if (items.length === 0) {
+  if (items.length === 0 && !orderSuccess) {
     navigate('/')
     return null
   }
@@ -72,6 +73,7 @@ export function CheckoutPage() {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
 
+      setOrderSuccess(true)
       clearCart()
       navigate('/success')
     } catch (err) {
