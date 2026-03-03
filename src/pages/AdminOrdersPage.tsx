@@ -21,7 +21,7 @@ export function AdminOrdersPage() {
 
   useEffect(() => {
     if (!requireAdmin()) {
-      navigate('/admin')
+      navigate('/admin', { replace: true })
       return
     }
 
@@ -44,30 +44,42 @@ export function AdminOrdersPage() {
   const fetchOrders = async () => {
     setIsLoading(true)
     
-    if (isSupabaseConfigured()) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50)
+    try {
+      if (isSupabaseConfigured()) {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        )
+        
+        const fetchPromise = supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50)
 
-      if (!error && data) {
-        setOrders(data)
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any
+
+        if (error) {
+          console.error('Fetch orders error:', error)
+        } else if (data) {
+          setOrders(data)
+        }
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        
+        setOrders([
+          { id: '1', customer_name: 'Demo User 1', phone: '9876543210', address: '123 Demo Street, City', items: [{ menu_item_id: '1', name: 'Idli Dosa Batter', price: 200, quantity: 2 }], total_price: 400, status: 'pending', payment_verified: true, payment_screenshot_url: null, created_at: yesterday.toISOString() },
+          { id: '2', customer_name: 'Demo User 2', phone: '9876543211', address: '456 Test Ave, City', items: [{ menu_item_id: '2', name: 'Sambar', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: true, payment_screenshot_url: 'https://example.com/img.jpg', created_at: today.toISOString() },
+          { id: '3', customer_name: 'Demo User 3', phone: '9876543212', address: '789 Sample Rd, City', items: [{ menu_item_id: '3', name: 'Aapam Batter', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: false, payment_screenshot_url: null, created_at: today.toISOString() },
+        ])
       }
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const today = new Date()
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
-      
-      setOrders([
-        { id: '1', customer_name: 'Demo User 1', phone: '9876543210', address: '123 Demo Street, City', items: [{ menu_item_id: '1', name: 'Idli Dosa Batter', price: 200, quantity: 2 }], total_price: 400, status: 'pending', payment_verified: true, payment_screenshot_url: null, created_at: yesterday.toISOString() },
-        { id: '2', customer_name: 'Demo User 2', phone: '9876543211', address: '456 Test Ave, City', items: [{ menu_item_id: '2', name: 'Sambar', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: true, payment_screenshot_url: 'https://example.com/img.jpg', created_at: today.toISOString() },
-        { id: '3', customer_name: 'Demo User 3', phone: '9876543212', address: '789 Sample Rd, City', items: [{ menu_item_id: '3', name: 'Aapam Batter', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: false, payment_screenshot_url: null, created_at: today.toISOString() },
-      ])
+    } catch (err) {
+      console.error('Error fetching orders:', err)
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const markAsDelivered = async (orderId: string) => {

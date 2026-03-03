@@ -23,11 +23,14 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/admin" element={<AdminLoginPage />} />
-          <Route path="/admin/" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/orders" replace />} />
-            <Route path="orders" element={<AdminOrdersPage />} />
-            <Route path="catalog" element={<AdminCatalogPage />} />
-            <Route path="analytics" element={<AdminAnalyticsPage />} />
+          <Route path="/admin/orders" element={<AdminLayout />}>
+            <Route index element={<AdminOrdersPage />} />
+          </Route>
+          <Route path="/admin/catalog" element={<AdminLayout />}>
+            <Route index element={<AdminCatalogPage />} />
+          </Route>
+          <Route path="/admin/analytics" element={<AdminLayout />}>
+            <Route index element={<AdminAnalyticsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
