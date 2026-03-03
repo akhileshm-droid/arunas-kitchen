@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Phone, Check, Loader2, Package, X, Eye, Copy, CheckCircle } from 'lucide-react'
+import { MapPin, Phone, Check, Loader2, Package, X, Eye, Copy, CheckCircle, Clock, Calendar } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { Order } from '../lib/types'
 import { requireAdmin } from '../components/AdminLayout'
+
+type FilterType = 'today' | 'tomorrow' | 'all'
 
 export function AdminOrdersPage() {
   const navigate = useNavigate()
@@ -12,7 +14,7 @@ export function AdminOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'payment_pending' | 'delivery_pending'>('all')
+  const [filter, setFilter] = useState<FilterType>('today')
 
   useEffect(() => {
     if (!requireAdmin()) {
@@ -51,9 +53,14 @@ export function AdminOrdersPage() {
       }
     } else {
       await new Promise(resolve => setTimeout(resolve, 500))
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      
       setOrders([
-        { id: '1', customer_name: 'Demo User', phone: '9876543210', address: '123 Demo Street', items: [{ menu_item_id: '1', name: 'Idli Dosa Batter', price: 200, quantity: 2 }], total_price: 400, status: 'pending', payment_verified: false, payment_screenshot_url: null, created_at: new Date().toISOString() },
-        { id: '2', customer_name: 'Test Customer', phone: '9876543211', address: '456 Test Ave', items: [{ menu_item_id: '2', name: 'Sambar', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: true, payment_screenshot_url: 'https://example.com/img.jpg', created_at: new Date().toISOString() },
+        { id: '1', customer_name: 'Demo User 1', phone: '9876543210', address: '123 Demo Street, City', items: [{ menu_item_id: '1', name: 'Idli Dosa Batter', price: 200, quantity: 2 }], total_price: 400, status: 'pending', payment_verified: true, payment_screenshot_url: null, created_at: yesterday.toISOString() },
+        { id: '2', customer_name: 'Demo User 2', phone: '9876543211', address: '456 Test Ave, City', items: [{ menu_item_id: '2', name: 'Sambar', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: true, payment_screenshot_url: 'https://example.com/img.jpg', created_at: today.toISOString() },
+        { id: '3', customer_name: 'Demo User 3', phone: '9876543212', address: '789 Sample Rd, City', items: [{ menu_item_id: '3', name: 'Aapam Batter', price: 250, quantity: 1 }], total_price: 250, status: 'pending', payment_verified: false, payment_screenshot_url: null, created_at: today.toISOString() },
       ])
     }
 
@@ -115,6 +122,27 @@ export function AdminOrdersPage() {
     return { label: 'Pending', className: 'bg-yellow-100 text-yellow-700' }
   }
 
+  const getOrderDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    date.setHours(0, 0, 0, 0)
+    return date
+  }
+
+  const isToday = (dateStr: string) => {
+    const orderDate = getOrderDate(dateStr)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return orderDate.getTime() === today.getTime()
+  }
+
+  const isTomorrow = (dateStr: string) => {
+    const orderDate = getOrderDate(dateStr)
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    return orderDate.getTime() === tomorrow.getTime()
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -123,43 +151,84 @@ export function AdminOrdersPage() {
     )
   }
 
+  const todayOrders = orders.filter(o => isToday(o.created_at) && o.status !== 'delivered')
+  const tomorrowOrders = orders.filter(o => isTomorrow(o.created_at) && o.status !== 'delivered')
+  const allPendingOrders = orders.filter(o => o.status !== 'delivered')
+
   const filteredOrders = orders.filter(order => {
-    if (filter === 'payment_pending') return !order.payment_verified
-    if (filter === 'delivery_pending') return order.status !== 'delivered'
+    if (filter === 'today') return isToday(order.created_at)
+    if (filter === 'tomorrow') return isTomorrow(order.created_at)
     return true
   })
 
-  const paymentPendingCount = orders.filter(o => !o.payment_verified).length
-  const deliveryPendingCount = orders.filter(o => o.status !== 'delivered').length
+  const getFilterCounts = () => {
+    return {
+      today: todayOrders.length,
+      tomorrow: tomorrowOrders.length,
+      all: allPendingOrders.length
+    }
+  }
+
+  const counts = getFilterCounts()
+  const todayDate = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
+  const tomorrowDate = new Date(Date.now() + 86400000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
 
   return (
     <div className="space-y-4">
       <h1 className="font-serif text-xl text-gray-800">Orders</h1>
 
+      <div className="bg-gradient-to-r from-[#4a6741] to-[#6b7d57] rounded-xl p-4 text-white">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="w-5 h-5" />
+          <span className="font-medium">Today's Deliveries</span>
+        </div>
+        <p className="text-3xl font-bold">{counts.today}</p>
+        <p className="text-sm text-white/80 mt-1">{todayDate}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="w-4 h-4 text-orange-600" />
+            <span className="text-sm text-orange-700">Tomorrow</span>
+          </div>
+          <p className="text-2xl font-bold text-orange-600">{counts.tomorrow}</p>
+          <p className="text-xs text-orange-600/70">{tomorrowDate}</p>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Package className="w-4 h-4 text-gray-600" />
+            <span className="text-sm text-gray-600">All Pending</span>
+          </div>
+          <p className="text-2xl font-bold text-gray-600">{counts.all}</p>
+          <p className="text-xs text-gray-500">Not delivered</p>
+        </div>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+        <button
+          onClick={() => setFilter('today')}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
+            filter === 'today' ? 'bg-[#4a6741] text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          📦 Today ({counts.today})
+        </button>
+        <button
+          onClick={() => setFilter('tomorrow')}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
+            filter === 'tomorrow' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'
+          }`}
+        >
+          📅 Tomorrow ({counts.tomorrow})
+        </button>
         <button
           onClick={() => setFilter('all')}
           className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'all' ? 'bg-[#4a6741] text-white' : 'bg-gray-100 text-gray-600'
+            filter === 'all' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600'
           }`}
         >
-          All ({orders.length})
-        </button>
-        <button
-          onClick={() => setFilter('payment_pending')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'payment_pending' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-600'
-          }`}
-        >
-          Payment Pending ({paymentPendingCount})
-        </button>
-        <button
-          onClick={() => setFilter('delivery_pending')}
-          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-            filter === 'delivery_pending' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-600'
-          }`}
-        >
-          Delivery Pending ({deliveryPendingCount})
+          All Orders
         </button>
       </div>
 
@@ -172,6 +241,8 @@ export function AdminOrdersPage() {
         filteredOrders.map(order => {
           const paymentStatus = getPaymentStatus(order)
           const deliveryStatus = getDeliveryStatus(order)
+          const isTodayOrder = isToday(order.created_at)
+          const isTomorrowOrder = isTomorrow(order.created_at)
 
           return (
             <div key={order.id} className="premium-card p-4">
@@ -182,6 +253,16 @@ export function AdminOrdersPage() {
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${deliveryStatus.className}`}>
                   🚚 {deliveryStatus.label}
                 </span>
+                {isTodayOrder && (
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-[#4a6741]/10 text-[#4a6741]">
+                    Today
+                  </span>
+                )}
+                {isTomorrowOrder && (
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-orange-100 text-orange-700">
+                    Tomorrow
+                  </span>
+                )}
               </div>
 
               <div className="mb-3">

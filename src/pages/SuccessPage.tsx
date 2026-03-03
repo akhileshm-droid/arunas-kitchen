@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom'
-import { CheckCircle, Phone, ShoppingBag } from 'lucide-react'
+import { CheckCircle, Phone, ShoppingBag, Truck } from 'lucide-react'
 
 export function SuccessPage() {
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const tomorrowDate = tomorrow.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short'
+  })
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="text-center w-full max-w-sm">
@@ -10,8 +20,18 @@ export function SuccessPage() {
         </div>
         
         <h1 className="font-serif text-2xl text-gray-800 mb-2">Order Placed!</h1>
+        
+        <div className="bg-[#4a6741]/5 border border-[#4a6741]/20 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-center gap-2 text-[#4a6741] mb-2">
+            <Truck className="w-5 h-5" />
+            <span className="font-medium">Expected Delivery</span>
+          </div>
+          <p className="text-xl font-bold text-[#4a6741]">{tomorrowDate}</p>
+          <p className="text-sm text-gray-500 mt-1">(Tomorrow)</p>
+        </div>
+
         <p className="text-gray-600 mb-6">
-          Your order has been placed successfully. We'll deliver it soon!
+          Thank you for your order! We'll deliver it to your address tomorrow.
         </p>
 
         <div className="premium-card p-4 mb-6">
