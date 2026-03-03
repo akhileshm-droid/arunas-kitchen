@@ -29,7 +29,7 @@ export default defineConfig({
       },
       manifest: {
         name: "Aruna's Culinary Arts",
-        short_name: "Aruna's Kitchen",
+        short_name: "Aruna's Culinary Arts",
         description: "Premium South Indian Delicacies",
         theme_color: '#ffffff',
         background_color: '#ffffff',

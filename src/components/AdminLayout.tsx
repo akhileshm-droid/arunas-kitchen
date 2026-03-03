@@ -22,7 +22,7 @@ export function AdminLayout() {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Leaf className="w-5 h-5 text-[#4a6741]" />
-            <span className="font-serif text-lg text-gray-800">Aruna's Kitchen</span>
+            <span className="font-serif text-lg text-gray-800">Aruna's Culinary Arts</span>
             <span className="text-xs bg-[#4a6741]/10 text-[#4a6741] px-2 py-0.5 rounded">
               Admin
             </span>

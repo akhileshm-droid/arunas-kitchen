@@ -11,7 +11,7 @@ export function Header() {
       <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Leaf className="w-5 h-5 text-[#4a6741]" />
-          <span className="font-serif text-lg text-gray-800">Aruna's Kitchen</span>
+          <span className="font-serif text-lg text-gray-800">Aruna's Culinary Arts</span>
         </Link>
         <div className="flex items-center gap-4">
           <Link
