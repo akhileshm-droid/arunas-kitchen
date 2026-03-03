@@ -185,9 +185,10 @@ export function AdminCatalogPage() {
       setShowModal(false)
       setFormData(initialFormData)
       setImageFile(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error)
-      alert('Failed to save product. Check console for details.')
+      const message = error?.message || 'Failed to save product'
+      alert(message)
     } finally {
       setIsSaving(false)
     }

@@ -39,20 +39,28 @@ export async function uploadProductImage(file: File): Promise<string | null> {
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
   const filePath = `products/${fileName}`
 
-  const { error } = await supabase.storage
-    .from('uploads')
-    .upload(filePath, file)
+  try {
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
 
-  if (error) {
-    console.error('Product image upload error:', error)
-    throw new Error(`Image upload failed: ${error.message}`)
+    if (error) {
+      console.error('Product image upload error:', error)
+      throw new Error(`Upload failed: ${error.message}. Make sure the 'uploads' bucket exists and is public.`)
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('uploads')
+      .getPublicUrl(filePath)
+
+    return urlData.publicUrl
+  } catch (err: any) {
+    console.error('Upload error details:', err)
+    throw new Error(err.message || 'Image upload failed')
   }
-
-  const { data } = supabase.storage
-    .from('uploads')
-    .getPublicUrl(filePath)
-
-  return data.publicUrl
 }
 
 export async function deleteProductImage(imageUrl: string): Promise<void> {
